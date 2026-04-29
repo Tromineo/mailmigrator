@@ -1,0 +1,25 @@
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# PHP
+*.cache

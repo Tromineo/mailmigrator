@@ -1,0 +1,37 @@
+body {
+    min-height: 100vh;
+}
+
+.output-frame {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #1e1e1e;
+}
+
+.card {
+    border-radius: 8px;
+}
+
+.card-header {
+    background: rgba(255,255,255,0.05);
+}
+
+.form-control,
+.form-check-input {
+    background-color: #2d2d2d;
+    border-color: #555;
+    color: #f0f0f0;
+}
+
+.form-control:focus {
+    background-color: #2d2d2d;
+    border-color: #6ea6ff;
+    color: #f0f0f0;
+    box-shadow: 0 0 0 0.2rem rgba(110,166,255,0.25);
+}
+
+.form-control::placeholder {
+    color: #777;
+}

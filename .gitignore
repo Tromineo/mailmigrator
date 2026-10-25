@@ -23,3 +23,6 @@ Thumbs.db
 
 # PHP
 *.cache
+# Composer
+/vendor/
+/v2/vendor/

@@ -1,34 +1,126 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App;
 
+use InvalidArgumentException;
+
+/**
+ * Recebe os dados do formulário, valida e monta o comando do imapsync.
+ *
+ * Uso:
+ *   $sync = new ImapSync($_POST);   // lança InvalidArgumentException se faltar campo
+ *   $sync->command();               // array de argumentos (para o Process)
+ *   $sync->displayCommand();        // texto com senhas mascaradas (para o Viewer)
+ */
 final class ImapSyncFactory
 {
-    public function create(string $srcHost, int $srcPort, string $srcUser, string $srcPass, bool $srcSsl,string $dstHost, int $dstPort, string $dstUser, string $dstPass, bool $dstSsl, bool $dryRun, bool $delete2, bool $noSslCheck,string $exclude, string $folder): array
+    // Conta de origem
+    private string $srcHost;
+    private int $srcPort;
+    private string $srcUser;
+    private string $srcPass;
+    private bool $srcSsl;
+
+    // Conta de destino
+    private string $dstHost;
+    private int $dstPort;
+    private string $dstUser;
+    private string $dstPass;
+    private bool $dstSsl;
+
+    // Opções
+    private bool $dryRun;
+    private bool $delete2;
+    private bool $noSslCheck;
+    private string $exclude;
+    private string $folder;
+
+    /**
+     * @param array<string, mixed> $data normalmente $_POST
+     * @throws InvalidArgumentException se algum campo obrigatório estiver vazio
+     */
+    public function __construct(array $data)
     {
-        $cmd = [
+        $this->srcHost = trim((string) ($data['src_host'] ?? ''));
+        $this->srcPort = (int) ($data['src_port'] ?? 993);
+        $this->srcUser = trim((string) ($data['src_user'] ?? ''));
+        $this->srcPass = (string) ($data['src_pass'] ?? ''); // sem trim: preserva espaços
+        $this->srcSsl  = isset($data['src_ssl']);
+
+        $this->dstHost = trim((string) ($data['dst_host'] ?? ''));
+        $this->dstPort = (int) ($data['dst_port'] ?? 993);
+        $this->dstUser = trim((string) ($data['dst_user'] ?? ''));
+        $this->dstPass = (string) ($data['dst_pass'] ?? '');
+        $this->dstSsl  = isset($data['dst_ssl']);
+
+        $this->dryRun     = isset($data['dry_run']);
+        $this->delete2    = isset($data['delete2']);
+        $this->noSslCheck = isset($data['no_ssl_check']);
+        $this->exclude    = trim((string) ($data['exclude'] ?? ''));
+        $this->folder     = trim((string) ($data['folder'] ?? ''));
+
+        $this->validate();
+    }
+
+    /**
+     * Argumentos do imapsync, sem escapeshellarg: devem ser executados
+     * via proc_open com array (sem shell).
+     *
+     * @return list<string>
+     */
+    public function command(): array
+    {
+        $args = [
             'imapsync',
-            '--host1', $srcHost,
-            '--port1', (string) $srcPort,
-            '--user1', $srcUser,
-            '--password1', $srcPass,
-            '--host2', $dstHost,
-            '--port2', (string) $dstPort,
-            '--user2', $dstUser,
-            '--password2', $dstPass,
+            '--host1', $this->srcHost,
+            '--port1', (string) $this->srcPort,
+            '--user1', $this->srcUser,
+            '--password1', $this->srcPass,
+            '--host2', $this->dstHost,
+            '--port2', (string) $this->dstPort,
+            '--user2', $this->dstUser,
+            '--password2', $this->dstPass,
             '--nolog',
         ];
 
-        if ($srcSsl)     { $cmd[] = '--ssl1'; }
-        if ($dstSsl)     { $cmd[] = '--ssl2'; }
-        if ($dryRun)     { $cmd[] = '--dry'; }
-        if ($delete2)    { $cmd[] = '--delete2'; }
-        if ($noSslCheck) { $cmd[] = '--nossl1_warn'; $cmd[] = '--nossl2_warn'; }
-        if ($exclude !== '') { $cmd[] = '--exclude'; $cmd[] = $exclude; }
-        if ($folder !== '')  { $cmd[] = '--folder';  $cmd[] = $folder; }
-    
-        return $cmd;
+        if ($this->srcSsl)  { $args[] = '--ssl1'; }
+        if ($this->dstSsl)  { $args[] = '--ssl2'; }
+        if ($this->dryRun)  { $args[] = '--dry'; }
+        if ($this->delete2) { $args[] = '--delete2'; }
+        if ($this->noSslCheck) { $args[] = '--nossl1_warn'; $args[] = '--nossl2_warn'; }
+        if ($this->exclude !== '') { $args[] = '--exclude'; $args[] = $this->exclude; }
+        if ($this->folder !== '')  { $args[] = '--folder';  $args[] = $this->folder; }
+
+        return $args;
+    }
+
+    /** Comando como texto, com as senhas trocadas por ****** (seguro para exibir). */
+    public function displayCommand(): string
+    {
+        $parts = [];
+        $maskNext = false;
+
+        foreach ($this->command() as $arg) {
+            if ($maskNext) {
+                $parts[] = '******';
+                $maskNext = false;
+                continue;
+            }
+            $parts[] = escapeshellarg($arg);
+            $maskNext = in_array($arg, ['--password1', '--password2'], true);
+        }
+
+        return implode(' ', $parts);
+    }
+
+    private function validate(): void
+    {
+        if (
+            $this->srcHost === '' || $this->srcUser === '' || $this->srcPass === ''
+            || $this->dstHost === '' || $this->dstUser === '' || $this->dstPass === ''
+        ) {
+            throw new InvalidArgumentException('Preencha todos os campos obrigatórios.');
+        }
     }
 }

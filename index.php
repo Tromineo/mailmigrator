@@ -12,7 +12,7 @@
     <h1 class="mb-1">Migrador de E-mail</h1>
     <p class="text-secondary mb-4">Migração via <code>imapsync</code></p>
 
-    <form action="migrate.php" method="POST" target="output-frame" onsubmit="showOutput()">
+    <form action="v2/public/migrate.php" method="POST" target="output-frame" onsubmit="showOutput()">
         <div class="row g-4">
 
             <!-- Origem -->

@@ -25,17 +25,22 @@ final class ProcessoMigrador
         stream_set_blocking($pipes[2], false);
         $names = [1 => 'stdout', 2 => 'stderr'];
         $buf   = [1 => '', 2 => ''];
+        $exitCode = -1;
 
         try {
             while (!feof($pipes[1]) || !feof($pipes[2])) {
                 $read = array_filter([$pipes[1], $pipes[2]], fn ($p) => !feof($p));
                 $w = $e = null;
-                if (stream_select($read, $w, $e, 1) === false) break;
+                if (stream_select($read, $w, $e, 1) === false) {
+                    break;
+                }
 
                 foreach ($read as $stream) {
                     $id    = $stream === $pipes[1] ? 1 : 2;
                     $chunk = fread($stream, 8192);
-                    if ($chunk === false || $chunk === '') continue;
+                    if ($chunk === false || $chunk === '') {
+                        continue;
+                    }
 
                     $buf[$id] .= $chunk;
                     while (($pos = strpos($buf[$id], "\n")) !== false) {
@@ -44,17 +49,27 @@ final class ProcessoMigrador
                     }
                 }
             }
-            foreach ($buf as $id => $rest) {          // sobra sem \n final
-                if ($rest !== '') yield [$names[$id], $rest];
+
+            foreach ($buf as $id => $rest) {   // sobra sem \n final
+                if ($rest !== '') {
+                    yield [$names[$id], $rest];
+                }
             }
         } finally {
             $status = proc_get_status($proc);
-            if ($status['running']) proc_terminate($proc);
+            if ($status['running']) {
+                proc_terminate($proc);
+            } else {
+                $exitCode = $status['exitcode'];   // guarda ANTES do proc_close
+            }
             fclose($pipes[1]);
             fclose($pipes[2]);
-            $code = proc_close($proc);
+            $closed = proc_close($proc);
+            if ($exitCode === -1 && $closed !== -1) {
+                $exitCode = $closed;
+            }
         }
 
-        return $code;
+        return $exitCode;
     }
 }

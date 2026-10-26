@@ -38,27 +38,27 @@ final class ImapSyncFactory
 
     /**
      * @param array<string, mixed> $data normalmente $_POST
-     * @throws InvalidArgumentException se algum campo obrigatório estiver vazio
+     * @throws InvalidArgumentException se algum campo obrigatório estiver vazio ou algum valor não for uma string
      */
     public function __construct(array $data)
     {
-        $this->srcHost = trim((string) ($data['src_host'] ?? ''));
-        $this->srcPort = (int) ($data['src_port'] ?? 993);
-        $this->srcUser = trim((string) ($data['src_user'] ?? ''));
-        $this->srcPass = (string) ($data['src_pass'] ?? ''); // sem trim: preserva espaços
+        $this->srcHost = trim(self::stringValue($data, 'src_host'));
+        $this->srcPort = (int) self::stringValue($data, 'src_port', '993');
+        $this->srcUser = trim(self::stringValue($data, 'src_user'));
+        $this->srcPass = self::stringValue($data, 'src_pass'); // sem trim: preserva espaços
         $this->srcSsl  = isset($data['src_ssl']);
 
-        $this->dstHost = trim((string) ($data['dst_host'] ?? ''));
-        $this->dstPort = (int) ($data['dst_port'] ?? 993);
-        $this->dstUser = trim((string) ($data['dst_user'] ?? ''));
-        $this->dstPass = (string) ($data['dst_pass'] ?? '');
+        $this->dstHost = trim(self::stringValue($data, 'dst_host'));
+        $this->dstPort = (int) self::stringValue($data, 'dst_port', '993');
+        $this->dstUser = trim(self::stringValue($data, 'dst_user'));
+        $this->dstPass = self::stringValue($data, 'dst_pass');
         $this->dstSsl  = isset($data['dst_ssl']);
 
         $this->dryRun     = isset($data['dry_run']);
         $this->delete2    = isset($data['delete2']);
         $this->noSslCheck = isset($data['no_ssl_check']);
-        $this->exclude    = trim((string) ($data['exclude'] ?? ''));
-        $this->folder     = trim((string) ($data['folder'] ?? ''));
+        $this->exclude    = trim(self::stringValue($data, 'exclude'));
+        $this->folder     = trim(self::stringValue($data, 'folder'));
 
         $this->validate();
     }
@@ -122,5 +122,16 @@ final class ImapSyncFactory
         ) {
             throw new InvalidArgumentException('Preencha todos os campos obrigatórios.');
         }
+    }
+
+    /** @param array<string, mixed> $data */
+    private static function stringValue(array $data, string $key, string $default = ''): string
+    {
+        $value = $data[$key] ?? $default;
+        if (!is_string($value)) {
+            throw new InvalidArgumentException('Os valores do formulário devem ser strings.');
+        }
+
+        return $value;
     }
 }
